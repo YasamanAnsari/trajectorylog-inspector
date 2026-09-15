@@ -362,6 +362,88 @@ a {
   color: var(--green-note-ink);
 }
 
+.linklike-button {
+  margin-top: 0.45rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--green-note-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.linklike-button:hover {
+  color: var(--blue);
+}
+
+/* Plain-language privacy explainer (native dialog) */
+.explainer {
+  width: min(680px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+}
+
+.explainer::backdrop {
+  background: rgba(11, 31, 51, 0.55);
+}
+
+.explainer-panel {
+  padding: 1.5rem 1.75rem 1.75rem;
+}
+
+.explainer-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin: -1.5rem -1.75rem 0.5rem;
+  padding: 1.5rem 1.75rem 0.75rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.explainer h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+
+.explainer h3 {
+  margin: 1.35rem 0 0.35rem;
+  font-size: 0.98rem;
+  color: var(--blue-ink);
+}
+
+.explainer p,
+.explainer li {
+  margin: 0 0 0.6rem;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--ink-mid);
+}
+
+.explainer ol {
+  padding-left: 1.3rem;
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .explainer-panel {
+    padding: 1.15rem 1.1rem 1.35rem;
+  }
+}
+
 /* Status + results */
 .status-line {
   margin: 1.5rem 0 0;

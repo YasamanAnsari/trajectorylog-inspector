@@ -4,6 +4,7 @@ import { TraceChart, EXPECTED_COLOR, ACTUAL_COLOR } from "./components/Chart";
 import { FluenceCanvas } from "./components/FluenceCanvas";
 import { AccuracyTable, DEFAULT_TOLERANCES, type Tolerances } from "./components/AccuracyTable";
 import { HeaderPanel, MetadataPanel, SubbeamTable } from "./components/Panels";
+import { PrivacyDialog } from "./components/PrivacyDialog";
 import { generateDemoLog } from "./demo/generator";
 import type { LogSummary, WorkerResponse } from "./worker/protocol";
 
@@ -223,11 +224,14 @@ export default function App() {
                 <rect x="3" y="11" width="18" height="11" rx="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
-              <p>
-                Your file is processed entirely inside your browser. It is never uploaded. You
-                can disconnect from the internet after loading this page and everything still
-                works.
-              </p>
+              <div>
+                <p>
+                  Your file is processed entirely inside your browser. It is never uploaded.
+                  You can disconnect from the internet after loading this page and everything
+                  still works.
+                </p>
+                <PrivacyDialog />
+              </div>
             </div>
           </div>
         </section>
