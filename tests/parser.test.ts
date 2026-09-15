@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { parseTrajectoryLog, TrajectoryParseError } from "../src/parser/parse";
 import { AXIS, AxisScale, MLCModel } from "../src/parser/types";
 import {
+  CORRECTED_STATS,
+  REFERENCE_STATS,
   angularDifference,
   computeLogStats,
   mlcStats,
@@ -225,7 +227,8 @@ describe("parser: golden file", () => {
     const lines = toCSV(log).trimEnd().split("\r\n");
     expect(lines[0]).toBe("Signature,VOSTL");
     expect(lines[5]).toBe("Axis Enumeration,[1\t 40]");
-    expect(lines[11]).toBe("MLC Model,NDS120HD (HD120)");
+    expect(lines[7]).toBe("Axis Scale,ModifiedIEC");
+    expect(lines[11]).toBe("MLC Model,NDS120HD");
     expect(lines[12]).toBe("Gantry Expected[deg],180,90,0");
     expect(lines[13]).toBe("Gantry Actual[deg],180.5,89.75,0.25");
     expect(lines[14]).toBe("MU Expected,0,50,100");
@@ -346,6 +349,24 @@ describe("analysis: beam hold", () => {
     expect(stats.beamHoldSnapshotsExcluded).toBe(0);
     expect(stats.maxDeviation).toBeCloseTo(5, 6);
     expect(stats.averageLeafRms).toBeCloseTo(Math.sqrt((2 * 25) / 10), 6);
+  });
+
+  it("reference mode reproduces TrajectoryLog.NET on both counts", () => {
+    const wrapLog = parseTrajectoryLog(
+      buildLog({
+        snapshots: 10,
+        gantry: (s) => (s === 5 ? [359.99, 0.01] : [10 * s, 10 * s]),
+        mu: linearMU(10),
+        beamHold: (s) => [s < 2 ? 1 : 0, s < 2 ? 1 : 0],
+        mlc: { samples: 122, value: (_, s) => [1, s < 2 ? 6 : 1] },
+      }),
+    );
+    const corrected = computeLogStats(wrapLog, CORRECTED_STATS);
+    const reference = computeLogStats(wrapLog, REFERENCE_STATS);
+    expect(Math.abs(corrected.gantry!.maxDeviation)).toBeCloseTo(0.02, 3);
+    expect(Math.abs(reference.gantry!.maxDeviation)).toBeGreaterThan(359);
+    expect(corrected.mlc!.maxDeviation).toBe(0);
+    expect(reference.mlc!.maxDeviation).toBeCloseTo(5, 6);
   });
 });
 

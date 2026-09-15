@@ -26,10 +26,14 @@ export interface LogSummary {
   header: TrajectoryHeader;
   metadata: TrajectoryMetadata;
   subbeams: Subbeam[];
+  /** Corrected statistics: angular wrap, beam-hold snapshots excluded. */
   stats: LogStats;
+  /** Same numbers TrajectoryLog.NET would report for this log. */
+  referenceStats: LogStats;
   gantry: ChartSeries | null;
   mu: ChartSeries | null;
   worstLeaf: ChartSeries | null;
+  referenceWorstLeaf: ChartSeries | null;
   /** Fluence is the slow step, so it arrives in a separate message. */
   fluence: FluenceResult;
 }

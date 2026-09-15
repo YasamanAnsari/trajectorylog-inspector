@@ -7,7 +7,12 @@
 
 import { parseTrajectoryLog, TrajectoryParseError } from "../parser/parse";
 import { AXIS, type TrajectoryLog } from "../parser/types";
-import { computeLogStats } from "../analysis/rms";
+import {
+  CORRECTED_STATS,
+  REFERENCE_STATS,
+  computeLogStats,
+  type LogStats,
+} from "../analysis/rms";
 import { buildFluence, fluenceSupported } from "../analysis/fluence";
 import { toCSV } from "../analysis/csv";
 import { mlcModelName } from "../parser/types";
@@ -27,24 +32,27 @@ function scalarSeries(log: TrajectoryLog, axisId: number): ChartSeries | null {
   return { expected: series.expected[0]!, actual: series.actual[0]! };
 }
 
-function buildSummary(log: TrajectoryLog): LogSummary {
-  const stats = computeLogStats(log);
+function worstLeafSeries(log: TrajectoryLog, stats: LogStats): ChartSeries | null {
+  if (!stats.mlc) return null;
+  const mlc = log.axes.get(AXIS.MLC)!;
+  const index = stats.mlc.maxDeviationSampleIndex;
+  return { expected: mlc.expected[index]!, actual: mlc.actual[index]! };
+}
 
-  let worstLeaf: ChartSeries | null = null;
-  if (stats.mlc) {
-    const mlc = log.axes.get(AXIS.MLC)!;
-    const index = stats.mlc.maxDeviationSampleIndex;
-    worstLeaf = { expected: mlc.expected[index]!, actual: mlc.actual[index]! };
-  }
+function buildSummary(log: TrajectoryLog): LogSummary {
+  const stats = computeLogStats(log, CORRECTED_STATS);
+  const referenceStats = computeLogStats(log, REFERENCE_STATS);
 
   return {
     header: log.header,
     metadata: log.metadata,
     subbeams: log.subbeams,
     stats,
+    referenceStats,
     gantry: scalarSeries(log, AXIS.Gantry),
     mu: scalarSeries(log, AXIS.MU),
-    worstLeaf,
+    worstLeaf: worstLeafSeries(log, stats),
+    referenceWorstLeaf: worstLeafSeries(log, referenceStats),
     fluence: { status: "pending" },
   };
 }

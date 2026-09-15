@@ -69,8 +69,14 @@ Where this tool deliberately departs from TrajectoryLog.NET:
   bank A (under the X1 jaw), the next 60 are bank B (under X2). The reference
   labels these banks the other way round.
 
+The "Match TrajectoryLog.NET" switch above the accuracy table recomputes the
+statistics exactly as the reference does (plain differences on every
+snapshot), so its numbers can be reproduced for side-by-side comparison.
+
 Fluence follows the reference exactly, including its limitations: jaw
 positions are not applied and both maps are weighted by the expected MU trace.
+Per-subbeam splitting (the reference's `SplitLogBeams`) is not implemented;
+statistics cover the whole log.
 
 ## Validation status
 

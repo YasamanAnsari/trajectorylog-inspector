@@ -152,16 +152,29 @@ export interface LogStats {
   mlc: MLCStats | null;
 }
 
-export function computeLogStats(log: TrajectoryLog): LogStats {
-  const scalar = (axisId: number, angular = false): AxisStats | null => {
+export interface StatsOptions {
+  /** Shortest angular difference for rotational axes (gantry, collimator). */
+  angular: boolean;
+  /** Leave beam-hold snapshots out of the MLC statistics. */
+  excludeBeamHold: boolean;
+}
+
+/** Corrected statistics (this tool's default). */
+export const CORRECTED_STATS: StatsOptions = { angular: true, excludeBeamHold: true };
+
+/** Plain differences over every snapshot, reproducing TrajectoryLog.NET. */
+export const REFERENCE_STATS: StatsOptions = { angular: false, excludeBeamHold: false };
+
+export function computeLogStats(log: TrajectoryLog, options = CORRECTED_STATS): LogStats {
+  const scalar = (axisId: number, rotational = false): AxisStats | null => {
     const series = log.axes.get(axisId);
     if (!series || series.expected.length === 0) return null;
-    return scalarAxisStats(series.expected[0]!, series.actual[0]!, angular);
+    return scalarAxisStats(series.expected[0]!, series.actual[0]!, rotational && options.angular);
   };
   return {
     gantry: scalar(AXIS.Gantry, true),
     collimator: scalar(AXIS.Collimator, true),
     mu: scalar(AXIS.MU),
-    mlc: mlcStats(log),
+    mlc: mlcStats(log, options.excludeBeamHold),
   };
 }

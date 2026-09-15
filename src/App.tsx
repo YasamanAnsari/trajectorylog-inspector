@@ -30,6 +30,9 @@ function errorDiff(expected: Float32Array, actual: Float32Array): Float32Array {
 export default function App() {
   const [state, setState] = useState<AppState>({ phase: "idle" });
   const [tolerances, setTolerances] = useState<Tolerances>(DEFAULT_TOLERANCES);
+  // When set, statistics reproduce TrajectoryLog.NET exactly (plain angle
+  // differences, beam-hold snapshots included) for side-by-side comparison.
+  const [matchReference, setMatchReference] = useState(false);
   const workerRef = useRef<Worker | null>(null);
   const pendingFile = useRef<{ name: string; size: number }>({ name: "", size: 0 });
   const csvName = useRef("trajectory-log.csv");
@@ -119,6 +122,8 @@ export default function App() {
 
   // Chart series are memoized so tolerance edits do not trigger canvas redraws.
   const summary = state.phase === "ready" ? state.summary : null;
+  const stats = summary ? (matchReference ? summary.referenceStats : summary.stats) : null;
+  const worstLeaf = summary ? (matchReference ? summary.referenceWorstLeaf : summary.worstLeaf) : null;
   const charts = useMemo(() => {
     if (!summary) return null;
     const pair = (s: { expected: Float32Array; actual: Float32Array }) => [
@@ -128,18 +133,17 @@ export default function App() {
     return {
       gantry: summary.gantry && pair(summary.gantry),
       mu: summary.mu && pair(summary.mu),
-      worstLeaf:
-        summary.worstLeaf && summary.stats.mlc
-          ? [
-              {
-                label: "Actual minus expected",
-                color: ACTUAL_COLOR,
-                values: errorDiff(summary.worstLeaf.expected, summary.worstLeaf.actual),
-              },
-            ]
-          : null,
+      worstLeaf: worstLeaf
+        ? [
+            {
+              label: "Actual minus expected",
+              color: ACTUAL_COLOR,
+              values: errorDiff(worstLeaf.expected, worstLeaf.actual),
+            },
+          ]
+        : null,
     };
-  }, [summary]);
+  }, [summary, worstLeaf]);
 
   const fluence = summary?.fluence.status === "ready" ? summary.fluence : null;
   const fluenceView = useMemo(() => {
@@ -275,29 +279,51 @@ export default function App() {
             <section className="panel" aria-labelledby="accuracy-heading">
               <div className="panel-head">
                 <h2 id="accuracy-heading">Delivery accuracy</h2>
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => workerRef.current?.postMessage({ type: "csv" })}
-                >
-                  Export CSV
-                </button>
+                <div className="panel-actions">
+                  <label className="check-label">
+                    <input
+                      type="checkbox"
+                      checked={matchReference}
+                      onChange={(e) => setMatchReference(e.target.checked)}
+                    />
+                    Match TrajectoryLog.NET
+                  </label>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => workerRef.current?.postMessage({ type: "csv" })}
+                  >
+                    Export CSV
+                  </button>
+                </div>
               </div>
-              <AccuracyTable
-                stats={state.summary.stats}
-                tolerances={tolerances}
-                onToleranceChange={handleToleranceChange}
-              />
+              {stats && (
+                <AccuracyTable
+                  stats={stats}
+                  tolerances={tolerances}
+                  onToleranceChange={handleToleranceChange}
+                />
+              )}
               <p className="panel-note">
-                Tolerances are configurable defaults, not clinical action levels. Gantry and
-                collimator errors use the shortest angular difference, so arcs crossing 0/360
-                are not penalized.
-                {state.summary.stats.mlc && state.summary.stats.mlc.beamHoldSnapshotsExcluded > 0 && (
+                Tolerances are configurable defaults, not clinical action levels.{" "}
+                {matchReference ? (
                   <>
-                    {" "}
-                    MLC statistics exclude{" "}
-                    {state.summary.stats.mlc.beamHoldSnapshotsExcluded.toLocaleString()}{" "}
-                    beam-hold snapshots, where leaves reposition with the beam off.
+                    Statistics are computed exactly as TrajectoryLog.NET does: plain
+                    differences on every snapshot, including beam holds and any 0/360 gantry
+                    crossing. Use this to reproduce the C# tool's numbers.
+                  </>
+                ) : (
+                  <>
+                    Gantry and collimator errors use the shortest angular difference, so arcs
+                    crossing 0/360 are not penalized.
+                    {stats?.mlc && stats.mlc.beamHoldSnapshotsExcluded > 0 && (
+                      <>
+                        {" "}
+                        MLC statistics exclude{" "}
+                        {stats.mlc.beamHoldSnapshotsExcluded.toLocaleString()} beam-hold
+                        snapshots, where leaves reposition with the beam off.
+                      </>
+                    )}
                   </>
                 )}{" "}
                 The CSV export follows the TrajectoryLog.NET layout and contains no patient
@@ -329,9 +355,9 @@ export default function App() {
                     series={charts.mu}
                   />
                 )}
-                {charts?.worstLeaf && state.summary.stats.mlc && (
+                {charts?.worstLeaf && stats?.mlc && (
                   <TraceChart
-                    title={`Position error, worst leaf (${state.summary.stats.mlc.worstLeafLabel})`}
+                    title={`Position error, worst leaf (${stats.mlc.worstLeafLabel})`}
                     unit="[cm]"
                     sampleIntervalMS={state.summary.header.sampleIntervalMS}
                     series={charts.worstLeaf}

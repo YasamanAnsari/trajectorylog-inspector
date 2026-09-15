@@ -3,12 +3,8 @@
  * WUSTL-ClinicalDev/TrajectoryLog.NET. Contains no patient identifiers.
  */
 
-import {
-  AXIS,
-  axisScaleName,
-  mlcModelName,
-  type TrajectoryLog,
-} from "../parser/types";
+// Enum names (not display names) so header rows match the reference CSV.
+import { AXIS, AxisScale, MLCModel, type TrajectoryLog } from "../parser/types";
 
 /**
  * 7 significant digits, matching .NET's default float formatting in the
@@ -29,11 +25,11 @@ export function toCSV(log: TrajectoryLog): string {
     `Number of Axes Sampled,${header.numberOfAxesSampled}`,
     `Axis Enumeration,[${header.axisEnumeration.join("\t ")}]`,
     `Samples Per Axis,[${header.samplesPerAxis.join("\t ")}]`,
-    `Axis Scale,${axisScaleName(header.axisScale)}`,
+    `Axis Scale,${AxisScale[header.axisScale] ?? header.axisScale}`,
     `Number of Subbeams,${header.numberOfSubbeams}`,
     `Is Truncated (1 = truncated / 0 = not truncated),${header.isTruncated}`,
     `Number of Snapshots,${header.numberOfSnapshots}`,
-    `MLC Model,${mlcModelName(header.mlcModel)}`,
+    `MLC Model,${MLCModel[header.mlcModel] ?? header.mlcModel}`,
   ];
 
   const axisRow = (axisId: number, label: string, unit: string): void => {

@@ -45,11 +45,12 @@ export function buildFluence(log: TrajectoryLog, which: "expected" | "actual"): 
     throw new Error("Log does not contain the MLC and MU axis data needed for fluence.");
   }
   // 2 carriages + 120 leaves (NDS120/HD) or 2 + 114 (SX2). The leaf index
-  // arithmetic below assumes exactly these layouts.
-  const expectedSamples = model === MLCModel.SX2 ? 116 : 122;
-  if (mlc.expected.length !== expectedSamples) {
+  // arithmetic below reads up to these counts; extra trailing samples are
+  // tolerated, as in the reference.
+  const requiredSamples = model === MLCModel.SX2 ? 116 : 122;
+  if (mlc.expected.length < requiredSamples) {
     throw new Error(
-      `MLC axis has ${mlc.expected.length} samples but model ${model} requires ${expectedSamples}; fluence layout unknown.`,
+      `MLC axis has ${mlc.expected.length} samples but model ${model} requires ${requiredSamples}; fluence layout unknown.`,
     );
   }
 
