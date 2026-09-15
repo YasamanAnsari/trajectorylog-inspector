@@ -18,7 +18,7 @@ export interface MLCStats {
   maxDeviation: number;
   /** MLC sample index (including carriage offset) where max deviation occurred. */
   maxDeviationSampleIndex: number;
-  /** Human-readable worst leaf, e.g. "Leaf 31, X1 bank". */
+  /** Human-readable worst leaf, e.g. "Leaf A31 (X1 side)". */
   worstLeafLabel: string;
   /** Per-leaf RMS keyed by MLC sample index. */
   perLeafRms: Map<number, number>;
@@ -65,18 +65,25 @@ export function scalarAxisStats(
 }
 
 /**
- * Label an MLC sample index as leaf + bank, mirroring the reference PDF report.
- * The reference skips the first two samples (carriages) for all models.
+ * Label an MLC sample index (carriages are samples 0 and 1) as a leaf.
+ *
+ * TrueBeam-family MLCs use Varian's naming: the first 60 leaves in the log
+ * are bank A, which sits under the X1 jaw, and the next 60 are bank B under
+ * X2. The reference library labels these the other way round; that is a
+ * documented error, not a convention we follow.
+ *
+ * Halcyon (SX2) has no independent source for its layer/bank layout, so the
+ * reference's numbering is kept there.
  */
 export function mlcSampleLabel(sampleIndex: number, model: MLCModel): string {
   if (model === MLCModel.SX2) {
     return sampleIndex > 58
-      ? `Leaf ${sampleIndex - 58}, X1 bank`
-      : `Leaf ${sampleIndex - 1}, X2 bank`;
+      ? `Leaf ${sampleIndex - 58}, X1 side`
+      : `Leaf ${sampleIndex - 1}, X2 side`;
   }
   return sampleIndex > 61
-    ? `Leaf ${sampleIndex - 61}, X1 bank`
-    : `Leaf ${sampleIndex - 1}, X2 bank`;
+    ? `Leaf B${sampleIndex - 61} (X2 side)`
+    : `Leaf A${sampleIndex - 1} (X1 side)`;
 }
 
 /**

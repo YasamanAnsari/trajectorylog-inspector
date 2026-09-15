@@ -351,8 +351,8 @@ describe("analysis: beam hold", () => {
 
 describe("fluence: geometry", () => {
   const N = 11;
-  // Varian scale: positive values are retracted from the centerline. X2 bank
-  // (samples 2..61) opens to +x, X1 bank (62..121) opens to -x.
+  // Varian convention: positive values are retracted from the midline. Bank A
+  // (samples 2..61) opens to +x in the image, bank B (62..121) opens to -x.
   const staticNDS = (model: MLCModel, x2: number, x1: number) =>
     parseTrajectoryLog(
       buildLog({
@@ -494,7 +494,8 @@ describe("demo log round-trip", () => {
     const stats = mlcStats(log)!;
     expect(stats.maxDeviationSampleIndex).toBe(STICKY_LEAF_SAMPLE);
     expect(Math.abs(stats.maxDeviation)).toBeGreaterThan(0.1);
-    expect(stats.worstLeafLabel).toBe("Leaf 29, X2 bank");
+    // First 60 leaf samples are Varian bank A (under the X1 jaw).
+    expect(stats.worstLeafLabel).toBe("Leaf A29 (X1 side)");
   });
 
   it("computes stats for all tracked axes", () => {

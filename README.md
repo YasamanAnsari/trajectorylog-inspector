@@ -65,6 +65,9 @@ Where this tool deliberately departs from TrajectoryLog.NET:
   shifted offsets.
 - CSV floats are written with 7 significant digits (as .NET does) and the two
   carriage samples are labeled as carriages on every MLC model.
+- Leaves are named with Varian's bank letters: the first 60 leaf samples are
+  bank A (under the X1 jaw), the next 60 are bank B (under X2). The reference
+  labels these banks the other way round.
 
 Fluence follows the reference exactly, including its limitations: jaw
 positions are not applied and both maps are weighted by the expected MU trace.

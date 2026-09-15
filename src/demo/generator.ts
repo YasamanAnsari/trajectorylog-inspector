@@ -17,10 +17,16 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-export const DEMO_SNAPSHOTS = 1500; // 30 s at 20 ms
+/**
+ * 62 s at 20 ms: a 1 s beam hold while the machine settles, then a full arc
+ * at just under TrueBeam's 6 deg/s gantry speed limit.
+ */
+export const DEMO_SNAPSHOTS = 3100;
 export const DEMO_TOTAL_MU = 240;
-/** MLC sample index of the planted sticky leaf (leaf 29, X2 bank). */
+/** MLC sample index of the planted sticky leaf (leaf A29, X1 side). */
 export const STICKY_LEAF_SAMPLE = 30;
+/** Snapshots of beam hold before the arc starts. */
+const HOLD_SNAPSHOTS = 50;
 
 const MLC_SAMPLES = 122; // 2 carriages + 120 leaves (NDS120)
 const AXIS_ENUMERATION = [
@@ -136,13 +142,17 @@ export function generateDemoLog(snapshots: number = DEMO_SNAPSHOTS): ArrayBuffer
   writer.paddedString("Demo Arc Beam", 512 + 32);
 
   // --- Snapshots ---
-  // Sticky window: the planted leaf freezes for the middle third of delivery.
-  const stickFrom = Math.floor(snapshots / 3);
-  const stickTo = Math.floor((2 * snapshots) / 3);
+  // A short beam hold precedes the arc (as on a real delivery), then the
+  // sticky leaf freezes for the middle third of the arc itself.
+  const hold = Math.min(HOLD_SNAPSHOTS, Math.max(0, snapshots - 2));
+  const arcSnapshots = snapshots - hold;
+  const stickFrom = hold + Math.floor(arcSnapshots / 3);
+  const stickTo = hold + Math.floor((2 * arcSnapshots) / 3);
   let stuckPosition = 0;
 
   for (let s = 0; s < snapshots; s++) {
-    const t = snapshots > 1 ? s / (snapshots - 1) : 0;
+    const holding = s < hold;
+    const t = arcSnapshots > 1 ? Math.max(0, s - hold) / (arcSnapshots - 1) : 0;
     // Clockwise arc 181 -> 179 deg. In IEC 61217 clockwise (viewed from the
     // foot of the couch) is increasing angle, so the trace passes 0/360.
     const gantry = 181 + t * 358;
@@ -171,31 +181,35 @@ export function generateDemoLog(snapshots: number = DEMO_SNAPSHOTS): ArrayBuffer
           writer.float32(6 + noise(0.01));
           break;
         case AXIS.CouchVrt:
-        case AXIS.CouchLng:
         case AXIS.CouchLat:
+          writer.float32(0);
+          writer.float32(noise(0.005));
+          break;
+        case AXIS.CouchLng:
           writer.float32(100);
           writer.float32(100 + noise(0.005));
           break;
         case AXIS.CouchRtn:
         case AXIS.CouchPit:
         case AXIS.CouchRol:
-          writer.float32(180);
-          writer.float32(180 + noise(0.005));
+          // IEC 61217: 0 is the neutral (untilted, unrotated) couch.
+          writer.float32(0);
+          writer.float32(noise(0.005));
           break;
         case AXIS.MU:
           writer.float32(mu);
-          writer.float32(mu + noise(0.03));
+          writer.float32(holding ? 0 : mu + noise(0.03));
           break;
         case AXIS.BeamHold:
-          writer.float32(0);
-          writer.float32(0);
+          writer.float32(holding ? 1 : 0);
+          writer.float32(holding ? 1 : 0);
           break;
         case AXIS.ControlPoint:
           writer.float32(t * 177);
           writer.float32(t * 177);
           break;
         case AXIS.MLC: {
-          // Samples 0-1: carriages. 2-61: X2 bank leaves. 62-121: X1 bank.
+          // Samples 0-1: carriages. 2-61: bank A (X1 side). 62-121: bank B (X2 side).
           for (let sample = 0; sample < MLC_SAMPLES; sample++) {
             if (sample < 2) {
               writer.float32(0);
