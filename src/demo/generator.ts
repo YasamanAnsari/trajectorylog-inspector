@@ -80,10 +80,14 @@ class ByteWriter {
   }
 }
 
-/** Aperture half-width (cm) per leaf: smooth lens-like field shape. */
+/**
+ * Aperture half-width (cm) per leaf: a lens-shaped opening across the
+ * central 0.5 cm leaves (about 12 cm tall) that breathes between roughly
+ * 5 and 8 cm wide over the arc, a plausible size for a single VMAT field.
+ */
 function apertureHalfWidth(leaf: number, phase: number): number {
   const center = 29.5;
-  const shape = Math.max(0, 1 - ((leaf - center) / 22) ** 2);
+  const shape = Math.max(0, 1 - ((leaf - center) / 12) ** 2);
   return shape * (2.5 + 1.5 * Math.sin(phase * Math.PI));
 }
 
@@ -139,7 +143,9 @@ export function generateDemoLog(snapshots: number = DEMO_SNAPSHOTS): ArrayBuffer
 
   for (let s = 0; s < snapshots; s++) {
     const t = snapshots > 1 ? s / (snapshots - 1) : 0;
-    const gantry = 181 - t * 358; // CW arc 181 deg -> -177 deg
+    // Clockwise arc 181 -> 179 deg. In IEC 61217 clockwise (viewed from the
+    // foot of the couch) is increasing angle, so the trace passes 0/360.
+    const gantry = 181 + t * 358;
     const mu = DEMO_TOTAL_MU * t;
 
     for (const axis of AXIS_ENUMERATION) {

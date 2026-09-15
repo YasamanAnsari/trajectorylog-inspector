@@ -684,9 +684,15 @@ a {
 /* Fluence */
 .fluence-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.75rem;
   justify-items: center;
+}
+
+@media (max-width: 900px) {
+  .fluence-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .fluence-figure {

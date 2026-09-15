@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FileDrop } from "./components/FileDrop";
 import { TraceChart, EXPECTED_COLOR, ACTUAL_COLOR } from "./components/Chart";
-import { FluenceCanvas } from "./components/FluenceCanvas";
+import { FluenceCanvas, fieldCrop } from "./components/FluenceCanvas";
 import { AccuracyTable, DEFAULT_TOLERANCES, type Tolerances } from "./components/AccuracyTable";
 import { HeaderPanel, MetadataPanel, SubbeamTable } from "./components/Panels";
 import { PrivacyDialog } from "./components/PrivacyDialog";
 import { generateDemoLog } from "./demo/generator";
 import type { LogSummary, WorkerResponse } from "./worker/protocol";
+import type { FluenceMap } from "./analysis/fluence";
 
 type AppState =
   | { phase: "idle" }
@@ -139,6 +140,16 @@ export default function App() {
           : null,
     };
   }, [summary]);
+
+  const fluence = summary?.fluence.status === "ready" ? summary.fluence : null;
+  const fluenceView = useMemo(() => {
+    if (!fluence) return null;
+    const { expected, actual } = fluence;
+    const data = new Float64Array(expected.data.length);
+    for (let i = 0; i < data.length; i++) data[i] = actual.data[i]! - expected.data[i]!;
+    const diff: FluenceMap = { ...expected, data };
+    return { diff, crop: fieldCrop([expected, actual]) };
+  }, [fluence]);
 
   return (
     <div className="app">
@@ -307,6 +318,7 @@ export default function App() {
                     unit="[deg]"
                     sampleIntervalMS={state.summary.header.sampleIntervalMS}
                     series={charts.gantry}
+                    breakAbove={180}
                   />
                 )}
                 {charts?.mu && (
@@ -343,13 +355,32 @@ export default function App() {
               {state.summary.fluence.status === "ready" && (
                 <>
                   <div className="fluence-grid">
-                    <FluenceCanvas map={state.summary.fluence.expected} label="Expected" />
-                    <FluenceCanvas map={state.summary.fluence.actual} label="Actual" />
+                    <FluenceCanvas
+                      map={state.summary.fluence.expected}
+                      label="Expected"
+                      crop={fluenceView?.crop}
+                    />
+                    <FluenceCanvas
+                      map={state.summary.fluence.actual}
+                      label="Actual"
+                      crop={fluenceView?.crop}
+                    />
+                    {fluenceView && (
+                      <FluenceCanvas
+                        map={fluenceView.diff}
+                        label="Actual minus expected"
+                        mode="signed"
+                        crop={fluenceView.crop}
+                      />
+                    )}
                   </div>
                   <p className="panel-note">
                     MU-weighted fluence reconstructed from MLC leaf positions, following the
-                    BuildFluence method in TrajectoryLog.NET. Known limitations: jaw positions
-                    are not applied, and both maps are weighted by the expected MU trace.
+                    BuildFluence method in TrajectoryLog.NET, cropped to the treated field.
+                    In the difference map, orange marks more fluence than planned and blue
+                    marks less; brightness is relative to the largest difference. Known
+                    limitations: jaw positions are not applied, and both maps are weighted by
+                    the expected MU trace.
                   </p>
                 </>
               )}

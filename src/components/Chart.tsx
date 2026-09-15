@@ -9,6 +9,11 @@ interface TraceChartProps {
   sampleIntervalMS: number;
   series: { label: string; color: string; values: Float32Array }[];
   height?: number;
+  /**
+   * Break the line where neighbouring values jump by more than this amount,
+   * so a rotational axis crossing 0/360 is not drawn as a vertical spike.
+   */
+  breakAbove?: number;
 }
 
 interface Bucket {
@@ -44,7 +49,14 @@ function niceStep(range: number, maxTicks: number): number {
   return power * 10;
 }
 
-export function TraceChart({ title, unit, sampleIntervalMS, series, height = 220 }: TraceChartProps) {
+export function TraceChart({
+  title,
+  unit,
+  sampleIntervalMS,
+  series,
+  height = 220,
+  breakAbove,
+}: TraceChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -95,18 +107,23 @@ export function TraceChart({ title, unit, sampleIntervalMS, series, height = 220
       ctx.fillStyle = "#63798f";
       ctx.strokeStyle = "#dfe8f3";
       ctx.lineWidth = 1;
+      // Ticks are integer multiples of the step (not accumulated sums) so
+      // labels come out exact, and -0 is normalised to 0.
       const yStep = niceStep(yMax - yMin, 5);
-      for (let v = Math.ceil(yMin / yStep) * yStep; v <= yMax; v += yStep) {
+      const yDecimals = Math.max(0, -Math.floor(Math.log10(yStep)));
+      for (let k = Math.ceil(yMin / yStep); k * yStep <= yMax; k++) {
+        const v = k * yStep;
         const y = toY(v);
         ctx.beginPath();
         ctx.moveTo(pad.left, y);
         ctx.lineTo(cssWidth - pad.right, y);
         ctx.stroke();
         ctx.textAlign = "right";
-        ctx.fillText(v.toFixed(Math.max(0, -Math.floor(Math.log10(yStep)))), pad.left - 6, y + 3);
+        ctx.fillText((v === 0 ? 0 : v).toFixed(yDecimals), pad.left - 6, y + 3);
       }
       const xStep = niceStep(totalSeconds, 8);
-      for (let t = 0; t <= totalSeconds; t += xStep) {
+      for (let k = 0; k * xStep <= totalSeconds; k++) {
+        const t = k * xStep;
         const x = toX(totalSeconds > 0 ? t / totalSeconds : 0);
         ctx.beginPath();
         ctx.moveTo(x, pad.top);
@@ -116,29 +133,45 @@ export function TraceChart({ title, unit, sampleIntervalMS, series, height = 220
         ctx.fillText(`${t.toFixed(0)}s`, x, height - 8);
       }
 
-      // Traces
+      // Traces. Earlier series are drawn wider so that when a later one
+      // (actual) sits exactly on top of an earlier one (expected), both
+      // remain visible as a line with a coloured halo.
       const buckets = Math.min(n, Math.floor(plotW));
-      for (const s of series) {
+      series.forEach((s, index) => {
         const sampled = downsample(s.values, buckets);
         ctx.strokeStyle = s.color;
-        ctx.lineWidth = 1.4;
+        ctx.lineWidth = index === series.length - 1 ? 1.4 : 3.2;
         ctx.beginPath();
+        let started = false;
         for (let b = 0; b < sampled.length; b++) {
           const x = toX(buckets > 1 ? b / (buckets - 1) : 0);
           const { min, max } = sampled[b]!;
-          if (b === 0) ctx.moveTo(x, toY(min));
+          const prev = b > 0 ? sampled[b - 1]! : null;
+          const jumps =
+            breakAbove !== undefined &&
+            (max - min > breakAbove ||
+              (prev !== null && Math.abs(min - prev.max) > breakAbove) ||
+              (prev !== null && Math.abs(max - prev.min) > breakAbove));
+          if (jumps) {
+            started = false;
+            continue;
+          }
+          if (!started) {
+            ctx.moveTo(x, toY(min));
+            started = true;
+          }
           ctx.lineTo(x, toY(max));
           if (max !== min) ctx.lineTo(x, toY(min));
         }
         ctx.stroke();
-      }
+      });
     };
 
     draw();
     const observer = new ResizeObserver(draw);
     observer.observe(wrap);
     return () => observer.disconnect();
-  }, [series, sampleIntervalMS, height]);
+  }, [series, sampleIntervalMS, height, breakAbove]);
 
   return (
     <figure className="chart" ref={wrapRef}>
