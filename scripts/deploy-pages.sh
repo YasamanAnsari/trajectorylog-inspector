@@ -10,8 +10,10 @@ npm run build
 npm run check:no-network
 
 # Build the commit from dist/ with a throwaway index; the working tree and
-# current branch are untouched.
+# current branch are untouched. Git rejects an existing empty index file,
+# so only the reserved path is kept.
 GIT_INDEX_FILE=$(mktemp)
+rm -f "$GIT_INDEX_FILE"
 export GIT_INDEX_FILE
 git --work-tree=dist add -A
 TREE=$(git write-tree)
